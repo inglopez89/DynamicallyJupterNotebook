@@ -61,8 +61,8 @@ class Testnotebook:
         try:
             questions = self.__read_questions()
             cell_array = []
-            if self.category == 'BI_Engineer':
-                questions = questions[questions['Desc_test'] == 'BI_Engineer']
+            if self.category == 'your category here':# parameter for select category for questions
+                questions = questions[questions['Desc_test'] == 'select category that you add in the excel file']
                 # Load greet
                 cell_array.append({"cell_type": "markdown", "metadata": {},
                                    "source": [str(questions.Subject.unique()).replace("['", '').replace("']", '')]})
@@ -82,12 +82,12 @@ class Testnotebook:
                                 })
                 cells.update(metadata)
                 # Create file Jupyter notebook for test
-                notebook = open('/home/clopez/Documents/Project_test/interview.ipynb', 'w')
+                notebook = open('your route/interview.ipynb', 'w')
                 notebook.write(json.dumps(cells))
                 notebook.close()
         except Exception as e:
             print('An error has occurred when notebook was been created: ', e)
 
 if __name__ == '__main__':
-    file_test = Testnotebook('BI_Engineer', '/home/clopez/Documents/Project_test/BD_test.xls', 7)
+    file_test = Testnotebook('your category created', 'your route with questions/BD_test.xls', 7) # the number is a number of questions that you want in your notebook
     file_test.create_notebook()
