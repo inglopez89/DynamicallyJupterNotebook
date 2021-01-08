@@ -1,6 +1,6 @@
 {
   "area": "BI_Engineer",
-  "DB":"/home/clopez/Documents/Project_test/interviews.db",
+  "DB":"source of databse sqlite",
   "questions": [
     {
       "type": "Programming",
@@ -15,5 +15,5 @@
       		 "Advanced": 1}
      }
   ],
-  "path_notebook":"/home/clopez/Documents/Project_test/interview.ipynb"
+  "path_notebook":"source destionations for notebook"
 }
