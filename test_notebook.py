@@ -1,6 +1,7 @@
 import pandas as pd
 from io import open
 import json
+import sqlite3
 
 class Testnotebook:
     """"
@@ -8,31 +9,60 @@ class Testnotebook:
     ...
     Attributes
     ----------
-    category: str
-        Represent the category for select the questions
-    rutaTest: str
-        Represent the source in this case excel file
+    params: str
+        source with the file json with params for create the notebook.
     """
-    def __init__(self, category, rutaTest, questions_number):
-        self.category = category
-        self.rutaTest = rutaTest
-        self.questions_number = questions_number
+    def __init__(self, params):
+        self.params = params
 
-    def __read_questions(self):
+    def __read_params(self):
         try:
-            head = pd.read_excel(self.rutaTest, header=0, sheet_name='Head')
-            category = pd.read_excel(self.rutaTest, header=0, sheet_name='head_type')
-            questions = pd.read_excel(self.rutaTest, header=0, sheet_name='Questions')
-            test = head.merge(category, on='id_head', how='left')
-            test = test.merge(questions, on='id_category', how='left')
-            test = test[['Desc_test', 'Subject', 'des_category',
+            with open(self.params) as file:
+                parameters = json.load(file)
+            area = parameters['area']
+            db = parameters['DB']
+            questions = parameters['questions']
+            path_notebook = parameters['path_notebook']
+            return area, db, questions, path_notebook
+        except Exception as e:
+            print('An error has occurred: ', e)
+
+    def __read_questions(self, db):
+        """
+        A method for connect sqlite and read the questions
+        ...
+        Attributes
+        -----------
+        db: str
+            Source of database sqlite
+        return: df
+            return the dataframe with the questions
+        """
+        try:
+            conn = sqlite3.connect(db)
+            df_head = pd.read_sql_query('select * from head', conn)
+            df_type = pd.read_sql_query('select * from type', conn)
+            df_questions = pd.read_sql_query('select * from questions', conn)
+            conn.close()
+            test = df_head.merge(df_type, on='id_head', how='left')
+            test = test.merge(df_questions, on='id_category', how='left')
+            test = test[['Desc_test', 'Subject', 'type',
                          'load_script', 'head', 'img', 'question', 'level']]
-            #print(test)
             return test
         except Exception as e:
-            print('An error has been occurred', e)
+            print('An error has been occurred when read questions', e)
 
     def __iter_df(self, df):
+        """
+        A Method for iter dataframe and create an list according to the format for Jupyter notebook, with
+        the cells with informations for questions.
+        Attributes
+        -----------
+         df: df
+            Is a dataframe with the questions
+        return: list
+            Return the list of about the cells created according to the jupyter notebook format.
+        """
         try:
             listq = []
             for index, row in df.iterrows():
@@ -42,35 +72,56 @@ class Testnotebook:
                               "source": [""]})
             return listq
         except Exception as e:
-            print('An error has occurred when try iter:',e)
+            print('An error has occurred when try iter:', e)
 
-    def __random_questions(self):
+    def __random_questions(self, df, q_type, level, n_question):
+        """
+        A method for select
+        df: df
+            this is a dataframe with the questions for random selection
+        q_type: str
+            Is a type of questions example: program, sql ..
+        level: str
+            this is a level for question selection, basic, intermediate and advanced
+        n_question: int
+            This is a number of questions that wants select
+        return: list
+            Return a list with random questions
+        """
         try:
-            pd_questions = self.__read_questions()
-            pd_program = pd_questions[pd_questions['des_category'] == 'Program']
-            pd_sql = pd_questions[pd_questions['des_category'] == 'Sql']
-            pd_program = pd_program.sample(n=round(self.questions_number / 2)-1)
-            pd_sql = pd_sql.sample(n=round(self.questions_number / 2))
-            questions = self.__iter_df(pd_program)
-            questions.extend(self.__iter_df(pd_sql))
-            return questions
+            df_filter = df[(df['type'] == q_type) & (df['level'] == level)]
+            df_filter = df_filter.sample(n=n_question)
+            iter_questions = self.__iter_df(df_filter)
+            return iter_questions
         except Exception as e:
             print('An error has occurred when try create random questions: ', e)
 
     def create_notebook(self):
+        """
+        A method for create the jupyter notebook with random questions.
+        """
         try:
-            questions = self.__read_questions()
+            area, db, questions, path_notebook = self.__read_params()
+            df_questions = self.__read_questions(db)
             cell_array = []
-            if self.category == 'your category here':# parameter for select category for questions
-                questions = questions[questions['Desc_test'] == 'select category that you add in the excel file']
-                # Load greet
-                cell_array.append({"cell_type": "markdown", "metadata": {},
-                                   "source": [str(questions.Subject.unique()).replace("['", '').replace("']", '')]})
-                # Load cells with random questions
-                cell_array.extend(self.__random_questions())
-                cells = dict({"cells": cell_array})
-                #Create Metadata for Jupyter notebook
-                metadata = dict({"metadata": {"kernelspec": {
+            df_questions = df_questions[df_questions['Desc_test'] == area]
+
+            # Load greet
+            cell_array.append({"cell_type": "markdown", "metadata": {},
+                               "source": [str(df_questions.Subject.unique()).replace("['", '').replace("']", '')]})
+            if df_questions.load_script.nunique() > 0:
+                cell_array.append({"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [],
+                              "source": [str(df_questions.load_script.unique()).replace("['", '').replace("']", '')]})
+            # Load cells with random questions
+            for q_list in questions:
+                q_type = q_list["type"]
+                q_level = dict(q_list["q_level"])
+                for k, v in q_level.items():
+                    cell_array.extend(self.__random_questions(df_questions, q_type, k, v))
+
+            cells = dict({"cells": cell_array})
+            #Create Metadata for Jupyter notebook
+            metadata = dict({"metadata": {"kernelspec": {
                             "display_name": "Python 3", "language": "python", "name": "python3"}, "language_info": {
                             "codemirror_mode": {"name": "ipython", "version": 3},
                             "file_extension": ".py", "mimetype": "text/x-python", "name": "python",
@@ -80,14 +131,15 @@ class Testnotebook:
                             "nbformat": 4,
                             "nbformat_minor": 2
                                 })
-                cells.update(metadata)
-                # Create file Jupyter notebook for test
-                notebook = open('your route/interview.ipynb', 'w')
-                notebook.write(json.dumps(cells))
-                notebook.close()
+            cells.update(metadata)
+            # Create file Jupyter notebook for test
+            notebook = open(path_notebook, 'w')
+            notebook.write(json.dumps(cells))
+            notebook.close()
+
         except Exception as e:
             print('An error has occurred when notebook was been created: ', e)
 
 if __name__ == '__main__':
-    file_test = Testnotebook('your category created', 'your route with questions/BD_test.xls', 7) # the number is a number of questions that you want in your notebook
+    file_test = Testnotebook('/home/clopez/Documents/Project_test/params.json')
     file_test.create_notebook()

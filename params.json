@@ -1,0 +1,19 @@
+{
+  "area": "BI_Engineer",
+  "DB":"/home/clopez/Documents/Project_test/interviews.db",
+  "questions": [
+    {
+      "type": "Programming",
+      "q_level":{"Basic": 1,
+      		 "Intermediate": 1,
+      		 "Advanced": 0}
+    },
+    {
+      "type":"Sql",
+      "q_level":{"Basic": 1,
+      		 "Intermediate": 1,
+      		 "Advanced": 1}
+     }
+  ],
+  "path_notebook":"/home/clopez/Documents/Project_test/interview.ipynb"
+}
